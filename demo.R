@@ -5,6 +5,9 @@ library(ggplot2)
 library(ggthemes)
 library(knitr)
 
+# set the work directory
+setwd("/Users/Kay/Documents/datasci/sde/insight_demo")
+
 # load the data
 gDat <- read.delim("gapminderDataFiveYear.txt")
 
@@ -13,15 +16,16 @@ str(gDat)
 levels(gDat$country)
 levels(gDat$continent)
 
-head(gDat,n = 20L)
+head(gDat,n = 15L)
 
 # create funtion for linear regression
 my.lm.int <- function(x) {
-  jFit <- lm(lifeExp ~ I(year - min(x$year)), x)
-  jCoef <- coef(jFit)
-  names(jCoef) <- NULL
-  return(c(intercept = jCoef[1],
-           slope = jCoef[2]))
+	jFit <- lm(lifeExp ~ I(year - min(x$year)), x)
+	jCoef <- coef(jFit)
+	names(jCoef) <- NULL
+	return(c(intercept = jCoef[1],
+					 slope = jCoef[2],
+					 maxResid = max(abs(resid(jFit)))/summary(jFit)$sigma))
 }
 
 # data aggregation to get the coef of linear model for each country
@@ -29,19 +33,29 @@ gDat.lm<-ddply(gDat, ~ country + continent, my.lm.int)
 
 head(gDat.lm)
 
-# finde "interesting" countries
-# "interesting" is defined to be with top 2 slope within each continent
+# finde 12 "interesting" countries
+# "interesting" is defined to be worst fitted by linear model based on maxResid
 country.int<-gDat.lm %>%
-  group_by(continent) %>%
-  filter(min_rank(desc(slope)) < 3 ) %>%
-  arrange(continent,slope)
+  filter(min_rank(desc(maxResid)) < 13 ) %>%
+  arrange(continent,maxResid)
 
 # show the dim of the country.int
 dim(country.int)
 
 # make a table
 kable(country.int)
-  
+
+# a look at these nine countries and linear fitting
+ggplot(country.int)+
+	geom_bar(aes(x=factor(1), fill=continent))+
+	xlab("") + ylab("")+
+	coord_polar(theta="y")
+
+ggplot(subset(gDat, country %in% country.int$country), aes(x = year, y = lifeExp)) +
+	geom_point(aes(color = continent))+
+	stat_smooth(method = "lm", se = F) + 
+	facet_wrap(~ continent+country, ncol = 3) + 
+	geom_line()
 
 # create function for linear spline
 li.spline<-function(x, yr = 1952:2006){
@@ -64,27 +78,19 @@ gDat.int<-gDat%>%
   droplevels%>%
   ddply( ~ country + continent, li.spline)
 
-# reoder the data and add the abbreviation
+# add the abbreviation
+abbr<-read.csv("abbr.csv",sep = ";")
 gDat.int<-gDat.int%>%
-  mutate(country = reorder(country, continent))%>%
-  mutate(abbr = revalue(country,
-                               c("Tunisia" = "Tn",
-                                 "Libya" = "Ly",
-                                 "Honduras" = "Hn",
-                                 "Nicaragua" = "Ni",
-                                 "Vietnam" = "Vn",
-                                 "Oman" = "Om",
-                                 "Bosnia and Herzegovina" = "Ba",
-                                 "Turkey" = "Tr",
-                                 "New Zealand" = "NZ",
-                                 "Australia" = "Au")))
+	left_join(abbr)%>%
+	droplevels
+  
 head(gDat.int)
 str(gDat.int)
 
 ggplot(gDat.int, aes(x = year, y = lifeExp)) + 
-  geom_point(aes(color = continent)) + 
-  facet_wrap(~ continent+country, ncol = 2) + 
-  geom_line()
+	geom_line(aes(color = continent)) + 
+  facet_wrap(~ continent+country, ncol = 3)
+  
 
 jpeg("pic/foo%02d.jpg")
 drawit=function(jYear){
@@ -95,7 +101,7 @@ drawit=function(jYear){
     scale_size_continuous(range=c(1,20))+
     ylim(10,83)+
     annotate("text", x=15000, y=20, label = jYear,size=30,color="grey")+
-    geom_text(aes(label = abbr),size = 5, aplha = 0.5, hjust = 1, vjust = 1)
+    geom_text(aes(label = Abbr),size = 5, aplha = 0.5, hjust = 1, vjust = 1)
 }
 finaldraw=function(year = 1952:2007){
   for (yr in year){
