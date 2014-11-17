@@ -12,13 +12,12 @@ library(knitr)
 library(demo)
 
 library(help = demo)
+ls("package:demo")
 
 # set the work directory
 setwd("/Users/Kay/Documents/datasci/sde/insight_demo")
 
-# load the data
-gDat <- read.delim("gapminderDataFiveYear.txt")
-
+# we will analyze built-in dataset gDat inside package demo
 # basic exploration of the data
 str(gDat)
 levels(gDat$country)
@@ -32,7 +31,7 @@ gDat.lm<-ddply(gDat, ~ country + continent, my_lm_int)
 
 head(gDat.lm)
 
-# finde 12 "interesting" countries
+# find 12 "interesting" countries
 # "interesting" is defined to be worst fitted by linear model based on maxResid
 country.int<-gDat.lm %>%
   filter(min_rank(desc(maxResid)) < 13 ) %>%
@@ -45,17 +44,25 @@ dim(country.int)
 kable(country.int)
 
 # a look at these nine countries and linear fitting
-ggplot(country.int)+
+cont.perc<-ggplot(country.int)+
 	geom_bar(aes(x=factor(1), fill=continent))+
 	xlab("") + ylab("")+
 	coord_polar(theta="y")
+cont.perc
 
-ggplot(subset(gDat, country %in% country.int$country),
+ggsave("percentage of continent.png",cont.perc)
+
+li.int<-ggplot(subset(gDat, country %in% country.int$country),
 			 aes(x = year, y = lifeExp)) +
 	geom_point(aes(color = continent))+
 	stat_smooth(method = "lm", se = F) +
 	facet_wrap(~ continent+country, ncol = 3) +
 	geom_line()
+
+li.int
+
+ggsave("linear fitting of interesting countries.png",li.int)
+
 
 # data aggregation to get linear spline for interesting countries
 # li_spline is the function of linear spline inside the package demo
@@ -64,8 +71,7 @@ gDat.int<-gDat%>%
   droplevels%>%
   ddply( ~ country + continent, li_spline)
 
-# add the abbreviation
-abbr<-read.csv("abbr.csv",sep = ";")
+# add the abbreviation using built-in data-set abbr
 gDat.int<-gDat.int%>%
 	left_join(abbr)%>%
 	droplevels
@@ -74,18 +80,22 @@ head(gDat.int)
 str(gDat.int)
 
 # a look at the result of linear spline
-ggplot(gDat.int, aes(x = year, y = lifeExp)) +
+li.spl<-ggplot(gDat.int, aes(x = year, y = lifeExp)) +
 	geom_line(aes(color = continent)) +
   facet_wrap(~ continent+country, ncol = 3)
+
+li.spl
+
+ggsave("linear spline of interesting countries.png",li.spl)
 
 
 jpeg("pic/foo%02d.jpg")
 
-for (yr in 1952:2007){
 # plot the data after linear spline
 # x axis is gdpPercap
 # y axis is lifeExp
 # the volume of the ball is the pop
+for (yr in 1952:2007){
 	base <-ggplot(subset(gDat.int, year == yr), aes(x = gdpPercap, y = lifeExp)) +
 		scale_x_log10(limits = c(230, 63000)) +
 		aes(fill = continent)
@@ -99,9 +109,4 @@ for (yr in 1952:2007){
 
 dev.off()
 
-make_mov <- function(name , loc, pic, frames = 4){
-	system(paste("ffmpeg -r ", frames, " -i ", loc, "/", pic, "%02d.jpg ", name, sep = ''))
-}
-
-
-make_mov("data.mp4", loc = "pic", pic = "foo")
+make_mov("data.mp4", loc = "pic", pic = "foo", frame = 6)
