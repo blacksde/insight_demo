@@ -111,4 +111,4 @@ for (yr in 1952:2007){
 
 dev.off()
 
-make_mov("data.mp4", loc = "pic", pic = "foo", frame = 6)
+make_mov("insight.mp4", loc = "pic", pic = "foo", frame = 6)
