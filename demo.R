@@ -23,13 +23,14 @@ str(gDat)
 levels(gDat$country)
 levels(gDat$continent)
 
-head(gDat,n = 15L)
+kable(head(gDat,n = 15L))
 
 # data aggregation to get the coef of linear model for each country
 # my_lm_int is the function for linear regression in package demo
+# the regression model is lifeExp ~ year, which is default in function my_lm_int
 gDat.lm<-ddply(gDat, ~ country + continent, my_lm_int)
 
-head(gDat.lm)
+kable(head(gDat.lm))
 
 # find 12 "interesting" countries
 # "interesting" is defined to be worst fitted by linear model based on maxResid
@@ -76,7 +77,7 @@ gDat.int<-gDat.int%>%
 	left_join(abbr)%>%
 	droplevels
 
-head(gDat.int)
+kable(head(gDat.int))
 str(gDat.int)
 
 # a look at the result of linear spline
