@@ -44,15 +44,16 @@ dim(country.int)
 # make a table
 kable(country.int)
 
-# a look at these nine countries and linear fitting
+# percentage of continents within these 12 countries
 cont.perc<-ggplot(country.int)+
 	geom_bar(aes(x=factor(1), fill=continent))+
 	xlab("") + ylab("")+
 	coord_polar(theta="y")
 cont.perc
 
-ggsave("percentage of continent.png",cont.perc)
+ggsave("percentage of continents.png",cont.perc)
 
+# a look at these nine countries and linear fitting
 li.int<-ggplot(subset(gDat, country %in% country.int$country),
 			 aes(x = year, y = lifeExp)) +
 	geom_point(aes(color = continent))+
